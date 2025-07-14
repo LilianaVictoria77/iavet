@@ -1,16 +1,19 @@
-import React, { useState } from 'react';
-import { MessageSquare, Send, Paperclip, Search, Circle, Image, Video, FileText } from 'lucide-react';
-import { Message, User } from '../types';
+import React, { useState, useRef } from 'react';
+import { MessageSquare, Send, Paperclip, Search, Image, X } from 'lucide-react';
+import { Message, User, MessageAttachment } from '../types';
 
 interface MessagingSystemProps {
   messages: Message[];
   users: User[];
+  onSendMessage: (message: Message) => void;
 }
 
-export default function MessagingSystem({ messages, users }: MessagingSystemProps) {
+export default function MessagingSystem({ messages, users, onSendMessage }: MessagingSystemProps) {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -33,20 +36,55 @@ export default function MessagingSystem({ messages, users }: MessagingSystemProp
     ).length;
   };
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim() || !selectedUser) return;
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
     
-    // Aquí se enviaría el mensaje
-    console.log('Sending message:', newMessage, 'to:', selectedUser.name);
-    setNewMessage('');
+    if (imageFiles.length !== files.length) {
+      alert('Solo se permiten archivos de imagen');
+      return;
+    }
+
+    setAttachments(prev => [...prev, ...imageFiles]);
   };
 
-  const getAttachmentIcon = (type: string) => {
-    switch (type) {
-      case 'image': return Image;
-      case 'video': return Video;
-      case 'document': return FileText;
-      default: return Paperclip;
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSendMessage = async () => {
+    if ((!newMessage.trim() && attachments.length === 0) || !selectedUser) return;
+
+    // Procesar attachments
+    const messageAttachments: MessageAttachment[] = [];
+    
+    for (const file of attachments) {
+      const url = URL.createObjectURL(file);
+      messageAttachments.push({
+        id: Date.now().toString() + Math.random(),
+        type: 'image',
+        url: url,
+        name: file.name,
+        size: file.size,
+      });
+    }
+
+    const message: Message = {
+      id: Date.now().toString(),
+      senderId: 'current-user', // En una app real, esto vendría del usuario autenticado
+      receiverId: selectedUser.id,
+      content: newMessage,
+      timestamp: new Date(),
+      isRead: false,
+      attachments: messageAttachments,
+    };
+
+    onSendMessage(message);
+    setNewMessage('');
+    setAttachments([]);
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -75,49 +113,50 @@ export default function MessagingSystem({ messages, users }: MessagingSystemProp
           </div>
 
           <div className="flex-1 overflow-y-auto">
-            {filteredUsers.map((user) => {
-              const lastMessage = getLastMessage(user.id);
-              const unreadCount = getUnreadCount(user.id);
-              
-              return (
-                <button
-                  key={user.id}
-                  onClick={() => setSelectedUser(user)}
-                  className={`w-full p-4 text-left hover:bg-gray-800 transition-colors border-b border-gray-800 ${
-                    selectedUser?.id === user.id ? 'bg-gray-800' : ''
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="relative">
-                      <img
-                        src={user.avatar || `https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop`}
-                        alt={user.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                      <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-gray-900 ${
-                        user.isOnline ? 'bg-green-400' : 'bg-gray-500'
-                      }`}></div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className="text-white font-medium truncate">{user.name}</p>
-                        {unreadCount > 0 && (
-                          <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
-                            {unreadCount}
-                          </span>
-                        )}
+            {filteredUsers.length === 0 ? (
+              <div className="p-4 text-center">
+                <p className="text-gray-400">No hay usuarios disponibles</p>
+              </div>
+            ) : (
+              filteredUsers.map((user) => {
+                const lastMessage = getLastMessage(user.id);
+                const unreadCount = getUnreadCount(user.id);
+                
+                return (
+                  <button
+                    key={user.id}
+                    onClick={() => setSelectedUser(user)}
+                    className={`w-full p-4 text-left hover:bg-gray-800 transition-colors border-b border-gray-800 ${
+                      selectedUser?.id === user.id ? 'bg-gray-800' : ''
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center">
+                        <span className="text-white font-bold">
+                          {user.name.charAt(0).toUpperCase()}
+                        </span>
                       </div>
-                      <p className="text-gray-400 text-sm truncate">
-                        {lastMessage ? lastMessage.content : 'Sin mensajes'}
-                      </p>
-                      <p className="text-gray-500 text-xs">
-                        {lastMessage ? lastMessage.timestamp.toLocaleTimeString() : ''}
-                      </p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="text-white font-medium truncate">{user.name}</p>
+                          {unreadCount > 0 && (
+                            <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
+                              {unreadCount}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-gray-400 text-sm truncate">
+                          {lastMessage ? lastMessage.content || 'Imagen' : 'Sin mensajes'}
+                        </p>
+                        <p className="text-gray-500 text-xs">
+                          {lastMessage ? lastMessage.timestamp.toLocaleTimeString() : ''}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -127,19 +166,14 @@ export default function MessagingSystem({ messages, users }: MessagingSystemProp
             <>
               {/* Chat Header */}
               <div className="p-4 border-b border-gray-800 flex items-center space-x-3">
-                <img
-                  src={selectedUser.avatar || `https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop`}
-                  alt={selectedUser.name}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
+                <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold">
+                    {selectedUser.name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
                 <div>
                   <h3 className="text-white font-semibold">{selectedUser.name}</h3>
-                  <div className="flex items-center space-x-2">
-                    <Circle className={`w-2 h-2 ${selectedUser.isOnline ? 'text-green-400 fill-current' : 'text-gray-500'}`} />
-                    <span className="text-gray-400 text-sm">
-                      {selectedUser.isOnline ? 'En línea' : `Visto ${selectedUser.lastSeen.toLocaleTimeString()}`}
-                    </span>
-                  </div>
+                  <p className="text-gray-400 text-sm">{selectedUser.cargo}</p>
                 </div>
               </div>
 
@@ -155,19 +189,23 @@ export default function MessagingSystem({ messages, users }: MessagingSystemProp
                           ? 'bg-red-600 text-white' 
                           : 'bg-gray-800 text-white'
                       }`}>
-                        <p className="text-sm">{message.content}</p>
+                        {message.content && (
+                          <p className="text-sm">{message.content}</p>
+                        )}
                         
                         {message.attachments.length > 0 && (
                           <div className="mt-2 space-y-2">
-                            {message.attachments.map((attachment) => {
-                              const Icon = getAttachmentIcon(attachment.type);
-                              return (
-                                <div key={attachment.id} className="flex items-center space-x-2 p-2 bg-black bg-opacity-20 rounded">
-                                  <Icon className="w-4 h-4" />
-                                  <span className="text-xs truncate">{attachment.name}</span>
-                                </div>
-                              );
-                            })}
+                            {message.attachments.map((attachment) => (
+                              <div key={attachment.id}>
+                                {attachment.type === 'image' && (
+                                  <img
+                                    src={attachment.url}
+                                    alt={attachment.name}
+                                    className="max-w-full h-auto rounded-lg"
+                                  />
+                                )}
+                              </div>
+                            ))}
                           </div>
                         )}
                         
@@ -182,9 +220,41 @@ export default function MessagingSystem({ messages, users }: MessagingSystemProp
 
               {/* Message Input */}
               <div className="p-4 border-t border-gray-800">
+                {/* Attachments Preview */}
+                {attachments.length > 0 && (
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    {attachments.map((file, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={file.name}
+                          className="w-16 h-16 object-cover rounded-lg"
+                        />
+                        <button
+                          onClick={() => removeAttachment(index)}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <div className="flex space-x-2">
-                  <button className="text-gray-400 hover:text-white">
-                    <Paperclip className="w-5 h-5" />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition-colors"
+                  >
+                    <Image className="w-5 h-5" />
                   </button>
                   <input
                     type="text"
@@ -196,7 +266,7 @@ export default function MessagingSystem({ messages, users }: MessagingSystemProp
                   />
                   <button
                     onClick={handleSendMessage}
-                    disabled={!newMessage.trim()}
+                    disabled={!newMessage.trim() && attachments.length === 0}
                     className="bg-red-600 hover:bg-red-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-colors"
                   >
                     <Send className="w-5 h-5" />

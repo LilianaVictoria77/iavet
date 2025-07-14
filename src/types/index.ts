@@ -1,30 +1,45 @@
 export interface User {
   id: string;
   name: string;
+  phone: string;
   email: string;
-  role: 'veterinario' | 'ganadero' | 'investigador' | 'admin';
-  avatar?: string;
-  isOnline: boolean;
-  lastSeen: Date;
+  cargo: string;
+  createdAt: Date;
 }
 
-export interface DetectedPattern {
+export interface TrainingData {
+  id: string;
+  fileName: string;
+  fileType: 'pdf' | 'image' | 'video' | 'url';
+  description: string;
+  symptoms: string[];
+  diseases: string[];
+  animalType: 'vaca' | 'caballo' | 'ambos';
+  uploadedAt: Date;
+  fileSize?: number;
+  url?: string;
+}
+
+export interface DetectedSymptom {
   name: string;
   confidence: number;
   description: string;
-  isSymptom: boolean;
   associatedDiseases: string[];
   severity: 'low' | 'medium' | 'high' | 'critical';
+  timestamp: string;
+  location?: string;
 }
 
 export interface AnalysisResult {
   id: string;
   fileName: string;
-  fileType: 'video' | 'image' | 'pdf' | 'url';
-  patterns: DetectedPattern[];
+  fileType: 'video' | 'image' | 'camera';
+  symptoms: DetectedSymptom[];
   confidence: number;
   timestamp: Date;
-  animalSpecies?: string;
+  animalType: 'vaca' | 'caballo' | 'desconocido';
+  cameraId?: string;
+  alertGenerated: boolean;
 }
 
 export interface Alert {
@@ -34,9 +49,11 @@ export interface Alert {
   severity: 'low' | 'medium' | 'high' | 'critical';
   timestamp: Date;
   isRead: boolean;
-  animalId?: string;
-  detectedPatterns: string[];
+  animalType: string;
+  detectedSymptoms: string[];
   suggestedDiseases: string[];
+  analysisId: string;
+  sentToUsers: string[];
 }
 
 export interface Message {
@@ -47,6 +64,7 @@ export interface Message {
   timestamp: Date;
   isRead: boolean;
   attachments: MessageAttachment[];
+  alertId?: string;
 }
 
 export interface MessageAttachment {
@@ -61,4 +79,8 @@ export interface UploadData {
   file?: File;
   url?: string;
   type: 'video' | 'image' | 'pdf' | 'url';
+  description?: string;
+  symptoms?: string[];
+  diseases?: string[];
+  animalType?: 'vaca' | 'caballo' | 'ambos';
 }

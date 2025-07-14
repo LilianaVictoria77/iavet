@@ -1,21 +1,31 @@
 import React, { useState } from 'react';
-import { Brain, Users, MessageSquare, AlertTriangle, BarChart3, Upload, Video, Image, FileText, Link } from 'lucide-react';
-import Dashboard from './components/Dashboard';
-import FileUpload from './components/FileUpload';
-import PatternAnalysis from './components/PatternAnalysis';
+import { Brain, Users, MessageSquare, AlertTriangle, Upload, Video, Database } from 'lucide-react';
+import AIFeeding from './components/AIFeeding';
+import AIAnalysis from './components/AIAnalysis';
 import UserManagement from './components/UserManagement';
 import MessagingSystem from './components/MessagingSystem';
 import AlertSystem from './components/AlertSystem';
 import { useAppState } from './hooks/useAppState';
 
-type ActiveTab = 'dashboard' | 'analysis' | 'users' | 'messages' | 'alerts';
+type ActiveTab = 'feeding' | 'analysis' | 'users' | 'messages' | 'alerts';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
-  const { users, alerts, messages, analysisResults } = useAppState();
+  const [activeTab, setActiveTab] = useState<ActiveTab>('feeding');
+  const { 
+    users, 
+    alerts, 
+    messages, 
+    trainingData,
+    analysisResults,
+    addUser,
+    addAlert,
+    addMessage,
+    addTrainingData,
+    addAnalysisResult
+  } = useAppState();
 
   const tabs = [
-    { id: 'dashboard' as const, label: 'Dashboard', icon: BarChart3 },
+    { id: 'feeding' as const, label: 'Alimentación IA', icon: Database },
     { id: 'analysis' as const, label: 'Análisis IA', icon: Brain },
     { id: 'users' as const, label: 'Usuarios', icon: Users },
     { id: 'messages' as const, label: 'Mensajes', icon: MessageSquare },
@@ -24,23 +34,27 @@ function App() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard':
-        return <Dashboard analysisResults={analysisResults} alerts={alerts} users={users} />;
+      case 'feeding':
+        return <AIFeeding trainingData={trainingData} onAddTrainingData={addTrainingData} />;
       case 'analysis':
-        return (
-          <div className="space-y-6">
-            <FileUpload />
-            <PatternAnalysis results={analysisResults} />
-          </div>
-        );
+        return <AIAnalysis 
+          analysisResults={analysisResults} 
+          onAddAnalysisResult={addAnalysisResult}
+          onCreateAlert={addAlert}
+          users={users}
+        />;
       case 'users':
-        return <UserManagement users={users} />;
+        return <UserManagement users={users} onAddUser={addUser} />;
       case 'messages':
-        return <MessagingSystem messages={messages} users={users} />;
+        return <MessagingSystem 
+          messages={messages} 
+          users={users} 
+          onSendMessage={addMessage}
+        />;
       case 'alerts':
         return <AlertSystem alerts={alerts} />;
       default:
-        return <Dashboard analysisResults={analysisResults} alerts={alerts} users={users} />;
+        return <AIFeeding trainingData={trainingData} onAddTrainingData={addTrainingData} />;
     }
   };
 
@@ -57,11 +71,10 @@ function App() {
             <div className="flex items-center space-x-4">
               <div className="flex space-x-1 text-sm text-gray-400">
                 <Video className="w-4 h-4" />
-                <Image className="w-4 h-4" />
-                <FileText className="w-4 h-4" />
-                <Link className="w-4 h-4" />
+                <Upload className="w-4 h-4" />
+                <Database className="w-4 h-4" />
               </div>
-              <span className="text-sm text-gray-400">GPT-4 Vision Activo</span>
+              <span className="text-sm text-gray-400">Sistema Real Activo</span>
             </div>
           </div>
         </div>

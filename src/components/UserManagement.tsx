@@ -1,40 +1,74 @@
 import React, { useState } from 'react';
-import { Users, UserPlus, Search, Filter, MoreVertical, Circle } from 'lucide-react';
+import { Users, UserPlus, Search, Trash2, Edit, Phone, Mail, Briefcase } from 'lucide-react';
 import { User } from '../types';
 
 interface UserManagementProps {
   users: User[];
+  onAddUser: (userData: Omit<User, 'id' | 'createdAt'>) => User;
 }
 
-export default function UserManagement({ users }: UserManagementProps) {
+export default function UserManagement({ users, onAddUser }: UserManagementProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState<string>('all');
   const [showAddUser, setShowAddUser] = useState(false);
-
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    return matchesSearch && matchesRole;
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    cargo: ''
   });
 
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'veterinario': return 'text-blue-400 bg-blue-500/10';
-      case 'ganadero': return 'text-green-400 bg-green-500/10';
-      case 'investigador': return 'text-purple-400 bg-purple-500/10';
-      case 'admin': return 'text-red-400 bg-red-500/10';
-      default: return 'text-gray-400 bg-gray-500/10';
+  const filteredUsers = users.filter(user =>
+    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.cargo.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.name.trim() || !formData.email.trim() || !formData.phone.trim() || !formData.cargo.trim()) {
+      alert('Por favor completa todos los campos');
+      return;
     }
+
+    // Validar email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      alert('Por favor ingresa un email válido');
+      return;
+    }
+
+    // Validar teléfono
+    const phoneRegex = /^[\+]?[0-9\s\-\(\)]{10,}$/;
+    if (!phoneRegex.test(formData.phone)) {
+      alert('Por favor ingresa un teléfono válido');
+      return;
+    }
+
+    // Verificar email único
+    if (users.some(user => user.email === formData.email)) {
+      alert('Ya existe un usuario con este email');
+      return;
+    }
+
+    const newUser = onAddUser(formData);
+    
+    // Reset form
+    setFormData({
+      name: '',
+      phone: '',
+      email: '',
+      cargo: ''
+    });
+    setShowAddUser(false);
+    
+    alert(`Usuario ${newUser.name} agregado exitosamente`);
   };
 
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case 'veterinario': return 'Veterinario';
-      case 'ganadero': return 'Ganadero';
-      case 'investigador': return 'Investigador';
-      case 'admin': return 'Administrador';
-      default: return role;
+  const deleteUser = (userId: string) => {
+    if (confirm('¿Estás seguro de que quieres eliminar este usuario?')) {
+      // Aquí implementarías la eliminación real
+      console.log('Eliminar usuario:', userId);
     }
   };
 
@@ -55,147 +89,175 @@ export default function UserManagement({ users }: UserManagementProps) {
         </button>
       </div>
 
-      {/* Filters */}
+      {/* Search */}
       <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar usuarios..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-red-500"
-            />
-          </div>
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="pl-10 pr-8 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-red-500 appearance-none"
-            >
-              <option value="all">Todos los roles</option>
-              <option value="veterinario">Veterinarios</option>
-              <option value="ganadero">Ganaderos</option>
-              <option value="investigador">Investigadores</option>
-              <option value="admin">Administradores</option>
-            </select>
-          </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Buscar usuarios por nombre, email o cargo..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-red-500"
+          />
         </div>
       </div>
 
-      {/* Users Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredUsers.map((user) => (
-          <div key={user.id} className="bg-gray-900 rounded-lg p-6 border border-gray-800 hover-scale">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="relative">
-                  <img
-                    src={user.avatar || `https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop`}
-                    alt={user.name}
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
-                  <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-gray-900 ${
-                    user.isOnline ? 'bg-green-400' : 'bg-gray-500'
-                  }`}></div>
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold">{user.name}</h3>
-                  <p className="text-gray-400 text-sm">{user.email}</p>
-                </div>
-              </div>
-              <button className="text-gray-400 hover:text-white">
-                <MoreVertical className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-400 text-sm">Rol</span>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getRoleColor(user.role)}`}>
-                  {getRoleLabel(user.role)}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-gray-400 text-sm">Estado</span>
-                <div className="flex items-center space-x-2">
-                  <Circle className={`w-3 h-3 ${user.isOnline ? 'text-green-400 fill-current' : 'text-gray-500'}`} />
-                  <span className="text-sm text-white">
-                    {user.isOnline ? 'En línea' : 'Desconectado'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-gray-400 text-sm">Última conexión</span>
-                <span className="text-sm text-white">
-                  {user.isOnline ? 'Ahora' : user.lastSeen.toLocaleDateString()}
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-4 pt-4 border-t border-gray-800">
-              <div className="flex space-x-2">
-                <button className="flex-1 bg-gray-800 hover:bg-gray-700 text-white py-2 px-3 rounded-lg text-sm font-medium transition-colors">
-                  Ver Perfil
-                </button>
-                <button className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded-lg text-sm font-medium transition-colors">
-                  Mensaje
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {filteredUsers.length === 0 && (
-        <div className="bg-gray-900 rounded-lg p-8 border border-gray-800 text-center">
-          <Users className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-white mb-2">No se encontraron usuarios</h3>
-          <p className="text-gray-400">
-            Intenta ajustar los filtros de búsqueda
-          </p>
+      {/* Users List */}
+      <div className="bg-gray-900 rounded-lg border border-gray-800">
+        <div className="p-6 border-b border-gray-800">
+          <h3 className="text-lg font-semibold text-white">
+            Usuarios Registrados ({filteredUsers.length})
+          </h3>
         </div>
-      )}
+
+        {filteredUsers.length === 0 ? (
+          <div className="p-8 text-center">
+            <Users className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-white mb-2">
+              {users.length === 0 ? 'No hay usuarios registrados' : 'No se encontraron usuarios'}
+            </h3>
+            <p className="text-gray-400">
+              {users.length === 0 
+                ? 'Agrega el primer usuario al sistema' 
+                : 'Intenta ajustar los términos de búsqueda'
+              }
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-800">
+            {filteredUsers.map((user) => (
+              <div key={user.id} className="p-6 hover:bg-gray-800/50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-4 mb-3">
+                      <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center">
+                        <span className="text-white font-bold text-lg">
+                          {user.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-semibold text-white">{user.name}</h4>
+                        <p className="text-gray-400">{user.cargo}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-center space-x-2 text-gray-300">
+                        <Mail className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm">{user.email}</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-gray-300">
+                        <Phone className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm">{user.phone}</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-gray-300">
+                        <Briefcase className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm">{user.cargo}</span>
+                      </div>
+                      <div className="text-gray-400 text-sm">
+                        Registrado: {user.createdAt.toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex space-x-2">
+                    <button className="text-blue-400 hover:text-blue-300 p-2 rounded-lg hover:bg-blue-500/10 transition-colors">
+                      <Edit className="w-5 h-5" />
+                    </button>
+                    <button 
+                      onClick={() => deleteUser(user.id)}
+                      className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-500/10 transition-colors"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Add User Modal */}
       {showAddUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 rounded-lg p-6 w-full max-w-md border border-gray-800">
-            <h3 className="text-xl font-semibold text-white mb-4">Agregar Nuevo Usuario</h3>
-            <div className="space-y-4">
-              <input
-                type="text"
-                placeholder="Nombre completo"
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-red-500"
-              />
-              <input
-                type="email"
-                placeholder="Correo electrónico"
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-red-500"
-              />
-              <select className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-red-500">
-                <option value="">Seleccionar rol</option>
-                <option value="veterinario">Veterinario</option>
-                <option value="ganadero">Ganadero</option>
-                <option value="investigador">Investigador</option>
-                <option value="admin">Administrador</option>
-              </select>
-            </div>
-            <div className="flex space-x-3 mt-6">
-              <button
-                onClick={() => setShowAddUser(false)}
-                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-lg font-medium transition-colors"
-              >
-                Cancelar
-              </button>
-              <button className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors">
-                Agregar
-              </button>
-            </div>
+            <h3 className="text-xl font-semibold text-white mb-6">Agregar Nuevo Usuario</h3>
+            
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Nombre Completo *
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Ej: Dr. Juan Pérez"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-red-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Teléfono *
+                </label>
+                <input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="Ej: +54 11 1234-5678"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-red-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="Ej: juan.perez@veterinaria.com"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-red-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Cargo *
+                </label>
+                <input
+                  type="text"
+                  value={formData.cargo}
+                  onChange={(e) => setFormData(prev => ({ ...prev, cargo: e.target.value }))}
+                  placeholder="Ej: Veterinario, Ganadero, Técnico"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-red-500"
+                  required
+                />
+              </div>
+
+              <div className="flex space-x-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowAddUser(false)}
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+                >
+                  Agregar Usuario
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
