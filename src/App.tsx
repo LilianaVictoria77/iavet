@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
-import { Brain, Users, MessageSquare, AlertTriangle, Upload, Video, Database } from 'lucide-react';
+import { Brain, Users, MessageSquare, AlertTriangle, Upload, Video, Database, BarChart3 } from 'lucide-react';
 import AIFeeding from './components/AIFeeding';
 import AIAnalysis from './components/AIAnalysis';
 import UserManagement from './components/UserManagement';
 import MessagingSystem from './components/MessagingSystem';
 import AlertSystem from './components/AlertSystem';
+import FormAnalyzer from './components/FormAnalyzer';
 import { useAppState } from './hooks/useAppState';
+import { FormData } from './types';
 
-type ActiveTab = 'feeding' | 'analysis' | 'users' | 'messages' | 'alerts';
+type ActiveTab = 'feeding' | 'analysis' | 'users' | 'messages' | 'alerts' | 'analyzer';
 
 function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('feeding');
+  const [formDataHistory, setFormDataHistory] = useState<FormData[]>([]);
+  
   const { 
     users, 
     alerts, 
@@ -24,18 +28,36 @@ function App() {
     addAnalysisResult
   } = useAppState();
 
+  // Función para agregar datos de formulario al historial
+  const addFormData = (formType: string, data: Record<string, any>) => {
+    const formData: FormData = {
+      id: Date.now().toString(),
+      formType,
+      data,
+      timestamp: new Date(),
+    };
+    setFormDataHistory(prev => [formData, ...prev]);
+  };
+
   const tabs = [
     { id: 'feeding' as const, label: 'Alimentación IA', icon: Database },
     { id: 'analysis' as const, label: 'Análisis IA', icon: Brain },
     { id: 'users' as const, label: 'Usuarios', icon: Users },
     { id: 'messages' as const, label: 'Mensajes', icon: MessageSquare },
     { id: 'alerts' as const, label: 'Alertas', icon: AlertTriangle },
+    { id: 'analyzer' as const, label: 'Análisis Formularios', icon: BarChart3 },
   ];
 
   const renderContent = () => {
     switch (activeTab) {
       case 'feeding':
-        return <AIFeeding trainingData={trainingData} onAddTrainingData={addTrainingData} />;
+        return <AIFeeding 
+          trainingData={trainingData} 
+          onAddTrainingData={(data) => {
+            addTrainingData(data);
+            addFormData('aiFeeding', data);
+          }} 
+        />;
       case 'analysis':
         return <AIAnalysis 
           analysisResults={analysisResults} 
@@ -44,17 +66,39 @@ function App() {
           users={users}
         />;
       case 'users':
-        return <UserManagement users={users} onAddUser={addUser} />;
+        return <UserManagement 
+          users={users} 
+          onAddUser={(userData) => {
+            const user = addUser(userData);
+            addFormData('userManagement', userData);
+            return user;
+          }} 
+        />;
       case 'messages':
         return <MessagingSystem 
           messages={messages} 
           users={users} 
-          onSendMessage={addMessage}
+          onSendMessage={(message) => {
+            addMessage(message);
+            addFormData('messaging', {
+              content: message.content,
+              receiverId: message.receiverId,
+              attachments: message.attachments
+            });
+          }}
         />;
       case 'alerts':
         return <AlertSystem alerts={alerts} />;
+      case 'analyzer':
+        return <FormAnalyzer formDataHistory={formDataHistory} />;
       default:
-        return <AIFeeding trainingData={trainingData} onAddTrainingData={addTrainingData} />;
+        return <AIFeeding 
+          trainingData={trainingData} 
+          onAddTrainingData={(data) => {
+            addTrainingData(data);
+            addFormData('aiFeeding', data);
+          }} 
+        />;
     }
   };
 

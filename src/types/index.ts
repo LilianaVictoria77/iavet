@@ -67,6 +67,13 @@ export interface Message {
   alertId?: string;
 }
 
+export interface FormData {
+  id: string;
+  formType: string;
+  data: Record<string, any>;
+  timestamp: Date;
+}
+
 export interface MessageAttachment {
   id: string;
   type: 'image' | 'video' | 'document';
